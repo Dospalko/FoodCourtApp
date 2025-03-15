@@ -1,18 +1,12 @@
 // src/config/dbConfig.js
+const { Sequelize } = require('sequelize');
 
-const mongoose = require('mongoose');
-
-// Pripojíme sa k MongoDB databáze (uprav URL podľa svojho prostredia)
-mongoose.connect('mongodb://localhost/food-court-order', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
+// Vytvorenie inštancie Sequelize pre SQLite databázu,
+// databáza bude uložená v súbore "database.sqlite" v koreňovom adresári.
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: './database.sqlite',
+  logging: false // vypnúť logovanie SQL príkazov (voliteľné)
 });
 
-const db = mongoose.connection;
-
-db.on('error', console.error.bind(console, 'Chyba pripojenia k databáze:'));
-db.once('open', () => {
-    console.log('Pripojené k MongoDB');
-});
-
-module.exports = db;
+module.exports = sequelize;

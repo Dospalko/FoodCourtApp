@@ -23,6 +23,8 @@
     "express": "^4.21.2",
     "graphql": "^16.10.0",
     "mongoose": "^8.12.1",
-    "socket.io": "^4.8.1"
+    "sequelize": "^6.37.6",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7"
   }
 }

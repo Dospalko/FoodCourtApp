@@ -2,24 +2,28 @@
 import React, { useEffect } from 'react';
 import { io } from 'socket.io-client';
 
-const SocketTest = () => {
+const SocketTest = ({ role }) => {
   useEffect(() => {
-    const socket = io('http://localhost:4000'); // pripojenie na backend
+    const socket = io('http://localhost:4000');
+
+    // Po pripojení sa prihlásime do miestnosti podľa role
     socket.on('connect', () => {
       console.log('Socket connected:', socket.id);
+      socket.emit('joinRoom', role);
     });
-    socket.on('orderStatus', (data) => {
-      console.log('Order status update received:', data);
+
+    socket.on('orderUpdate', (data) => {
+      console.log(`Order update received for role ${role}:`, data);
     });
-    // Príklad: odoslanie eventu po 3 sekundách
-    setTimeout(() => {
-      socket.emit('orderUpdate', { orderId: 1, status: 'ready' });
-    }, 3000);
+
+    socket.on('orderDeleted', (data) => {
+      console.log(`Order deletion received for role ${role}:`, data);
+    });
 
     return () => socket.disconnect();
-  }, []);
+  }, [role]);
 
-  return <div>Testing Socket.io in React</div>;
+  return <div>Socket client for role: {role}</div>;
 };
 
 export default SocketTest;

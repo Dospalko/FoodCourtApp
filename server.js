@@ -6,13 +6,16 @@ const path = require('path');
 const { ApolloServer, gql } = require('apollo-server-express');
 
 // Pre túto fázu nepoužívame MongoDB – dbConfig môže byť prázdny
-// Prequire('./src/config/dbConfig');
+// require('./src/config/dbConfig');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: { origin: '*' }
 });
+
+// Nastavíme globálnu premennú pre Socket.io, aby ju vedeli využívať aj GraphQL resolvery
+global.io = io;
 
 // Middleware pre parsovanie JSON
 app.use(express.json());
@@ -36,12 +39,21 @@ const typeDefs = gql`
     status: String!
   }
 
+  input OrderUpdateInput {
+    items: [String]
+    totalAmount: Float
+    pickupTime: String
+    status: String
+  }
+
   type Query {
     orders: [Order]
   }
 
   type Mutation {
     createOrder(items: [String!]!, totalAmount: Float!, pickupTime: String!): Order
+    updateOrder(id: ID!, updates: OrderUpdateInput!, role: String!): Order
+    deleteOrder(id: ID!): Order
   }
 `;
 
@@ -55,9 +67,27 @@ const resolvers = {
   Mutation: {
     createOrder: (_, { items, totalAmount, pickupTime }) => {
       const newOrder = orderRepository.createOrder({ items, totalAmount, pickupTime });
-      // Emitovanie notifikácie cez Socket.io pre real-time update
-      io.emit('orderStatus', newOrder);
+      // Vysielame notifikáciu pre všetkých klientov
+      global.io.emit('orderStatus', newOrder);
       return newOrder;
+    },
+    updateOrder: (_, { id, updates, role }) => {
+      const updatedOrder = orderRepository.updateOrder({ id, updates });
+      // Na základe role (restaurant alebo customer) posielame notifikácie do konkrétnych rooms
+      if (role === 'restaurant') {
+        global.io.to('customer').emit('orderUpdate', updatedOrder);
+      } else if (role === 'customer') {
+        global.io.to('restaurant').emit('orderUpdate', updatedOrder);
+      } else {
+        // Ak nie je špecifikovaná role, vysielame všetkým
+        global.io.emit('orderUpdate', updatedOrder);
+      }
+      return updatedOrder;
+    },
+    deleteOrder: (_, { id }) => {
+      const deletedOrder = orderRepository.deleteOrder(id);
+      global.io.emit('orderDeleted', deletedOrder);
+      return deletedOrder;
     }
   }
 };
@@ -70,7 +100,7 @@ async function startApolloServer() {
 
 startApolloServer();
 
-// Socket.io logika
+// Socket.io logika (rooms, eventy)
 const orderSocket = require(path.join(__dirname, 'src', 'sockets', 'orderSocket'));
 orderSocket(io);
 

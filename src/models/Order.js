@@ -3,9 +3,8 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/dbConfig');
 
 const Order = sequelize.define('Order', {
-  // Automaticky vytvorený primárny kľúč id
   items: {
-    type: DataTypes.JSON, // Ukladáme pole reťazcov ako JSON (alternatívne môžeš definovať samostatný model)
+    type: DataTypes.JSON,  // Ukladáme pole ako JSON
     allowNull: false
   },
   totalAmount: {
@@ -20,9 +19,13 @@ const Order = sequelize.define('Order', {
     type: DataTypes.STRING,
     allowNull: false,
     defaultValue: 'pending'
+  },
+  customerAuthToken: {
+    type: DataTypes.STRING,
+    allowNull: false
   }
 }, {
-  timestamps: true // automatické pridávanie createdAt a updatedAt
+  timestamps: true
 });
 
 module.exports = Order;

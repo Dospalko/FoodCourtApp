@@ -1,11 +1,8 @@
 // src/sockets/orderSocket.js
 module.exports = function(io) {
     io.on('connection', (socket) => {
-      // Získame persistentný authToken z handshake query
       const authToken = socket.handshake.query.authToken;
       console.log(`Socket connected: ${socket.id} with authToken: ${authToken}`);
-  
-      // Uložme token na socket, ak by sme ho neskôr chceli využiť
       socket.authToken = authToken;
   
       socket.on('joinRoom', (room) => {

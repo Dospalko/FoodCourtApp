@@ -24,11 +24,20 @@ const UPDATE_ORDER = gql`
   }
 `;
 
+const DELETE_ORDER = gql`
+  mutation DeleteOrder($id: ID!) {
+    deleteOrder(id: $id) {
+      id
+    }
+  }
+`;
+
 const RestaurantView = () => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const { loading, error, data, refetch } = useQuery(GET_ORDERS);
   const [updateOrder] = useMutation(UPDATE_ORDER);
+  const [deleteOrder] = useMutation(DELETE_ORDER);
 
   useEffect(() => {
     // Získanie persistent tokenu z localStorage
@@ -37,18 +46,20 @@ const RestaurantView = () => {
       authToken = Math.random().toString(36).substring(2, 15);
       localStorage.setItem('authToken', authToken);
     }
-    const sock = io('http://localhost:4000', {
-      query: { authToken }
-    });
+    const sock = io('http://localhost:4000', { query: { authToken } });
     setSocket(sock);
     sock.on('connect', () => {
       console.log('Restaurant socket connected:', sock.id, 'with token:', authToken);
-      // Pripojenie do miestnosti pre restauráciu
       sock.emit('joinRoom', 'restaurant');
     });
     sock.on('orderStatus', (data) => {
       console.log('New order received for restaurant:', data);
       setNotifications(prev => [...prev, { type: 'new', data }]);
+      refetch();
+    });
+    sock.on('orderDeleted', (data) => {
+      console.log('Order deletion received for restaurant:', data);
+      setNotifications(prev => [...prev, { type: 'deleted', data }]);
       refetch();
     });
     return () => sock.disconnect();
@@ -69,6 +80,15 @@ const RestaurantView = () => {
     }
   };
 
+  const handleDeleteOrder = async (id) => {
+    try {
+      await deleteOrder({ variables: { id } });
+      refetch();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div>
       <h2>Restaurant Dashboard</h2>
@@ -77,6 +97,7 @@ const RestaurantView = () => {
         {notifications.map((notif, idx) => (
           <li key={idx}>
             {notif.type === 'new' && `New order received: ID ${notif.data.id}`}
+            {notif.type === 'deleted' && `Order deleted: ID ${notif.data.id}`}
           </li>
         ))}
       </ul>
@@ -89,7 +110,10 @@ const RestaurantView = () => {
                 <strong>ID:</strong> {order.id} — {order.items.join(', ')} — {order.totalAmount}€ — {order.status}
               </div>
               {order.status !== 'ready' && (
-                <button onClick={() => markOrderReady(order.id)}>Mark as Ready</button>
+                <>
+                  <button onClick={() => markOrderReady(order.id)}>Mark as Ready</button>
+                  <button onClick={() => handleDeleteOrder(order.id)}>Delete Order</button>
+                </>
               )}
             </li>
           ))}

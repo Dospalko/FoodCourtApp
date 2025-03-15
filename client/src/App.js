@@ -5,12 +5,12 @@ import RestaurantView from './components/RestaurantView';
 import CustomerView from './components/CustomerView';
 
 const client = new ApolloClient({
-  uri: 'http://localhost:4000/graphql', // backend beží na porte 4000
+  uri: 'http://localhost:4000/graphql',
   cache: new InMemoryCache()
 });
 
 function App() {
-  const [view, setView] = useState('restaurant'); // predvolená view
+  const [view, setView] = useState('restaurant');
 
   return (
     <ApolloProvider client={client}>

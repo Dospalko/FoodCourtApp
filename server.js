@@ -5,29 +5,25 @@ const socketIo = require('socket.io');
 const path = require('path');
 const { ApolloServer, gql } = require('apollo-server-express');
 
-// Pre túto fázu nepoužívame MongoDB – dbConfig môže byť prázdny
-// require('./src/config/dbConfig');
+// Načítanie SQL databázy cez Sequelize
+const sequelize = require('./src/config/dbConfig');
+// Načítanie modelu Order
+const Order = require('./src/models/Order');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: { origin: '*' }
-});
+const io = socketIo(server, { cors: { origin: '*' } });
 
-// Nastavíme globálnu premennú pre Socket.io, aby ju vedeli využívať aj GraphQL resolvery
+// Uložíme io globálne, aby ho mohli používať resolvery
 global.io = io;
 
-// Middleware pre parsovanie JSON
 app.use(express.json());
-
-// Testovacia routa
 app.get('/', (req, res) => {
-  res.send('Food Court Order API is running!');
+  res.send('Food Court Order API is running with SQL database!');
 });
 
-// REST routy pre objednávky
-const orderRoutes = require(path.join(__dirname, 'src', 'routes', 'orderRoutes'));
-app.use('/orders', orderRoutes);
+// REST routy – (môžete pridať neskôr)
+// app.use('/orders', orderRoutes);
 
 // GraphQL schéma a resolvery
 const typeDefs = gql`
@@ -57,37 +53,55 @@ const typeDefs = gql`
   }
 `;
 
-// Používame in-memory repozitár (v src/data/orderRepository.js)
-const orderRepository = require('./src/data/orderRepository');
-
 const resolvers = {
   Query: {
-    orders: () => orderRepository.getAllOrders()
+    orders: async () => {
+      try {
+        return await Order.findAll();
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        return [];
+      }
+    }
   },
   Mutation: {
-    createOrder: (_, { items, totalAmount, pickupTime }) => {
-      const newOrder = orderRepository.createOrder({ items, totalAmount, pickupTime });
-      // Vysielame notifikáciu pre všetkých klientov
-      global.io.emit('orderStatus', newOrder);
-      return newOrder;
-    },
-    updateOrder: (_, { id, updates, role }) => {
-      const updatedOrder = orderRepository.updateOrder({ id, updates });
-      // Na základe role (restaurant alebo customer) posielame notifikácie do konkrétnych rooms
-      if (role === 'restaurant') {
-        global.io.to('customer').emit('orderUpdate', updatedOrder);
-      } else if (role === 'customer') {
-        global.io.to('restaurant').emit('orderUpdate', updatedOrder);
-      } else {
-        // Ak nie je špecifikovaná role, vysielame všetkým
-        global.io.emit('orderUpdate', updatedOrder);
+    createOrder: async (_, { items, totalAmount, pickupTime }) => {
+      try {
+        const newOrder = await Order.create({ items, totalAmount, pickupTime });
+        global.io.emit('orderStatus', newOrder);
+        return newOrder;
+      } catch (error) {
+        console.error('Error creating order:', error);
+        throw new Error('Error creating order');
       }
-      return updatedOrder;
     },
-    deleteOrder: (_, { id }) => {
-      const deletedOrder = orderRepository.deleteOrder(id);
-      global.io.emit('orderDeleted', deletedOrder);
-      return deletedOrder;
+    updateOrder: async (_, { id, updates, role }) => {
+      try {
+        await Order.update(updates, { where: { id } });
+        const updatedOrder = await Order.findByPk(id);
+        if (role === 'restaurant') {
+          global.io.to('customer').emit('orderUpdate', updatedOrder);
+        } else if (role === 'customer') {
+          global.io.to('restaurant').emit('orderUpdate', updatedOrder);
+        } else {
+          global.io.emit('orderUpdate', updatedOrder);
+        }
+        return updatedOrder;
+      } catch (error) {
+        console.error('Error updating order:', error);
+        throw new Error('Error updating order');
+      }
+    },
+    deleteOrder: async (_, { id }) => {
+      try {
+        const deletedOrder = await Order.findByPk(id);
+        await Order.destroy({ where: { id } });
+        global.io.emit('orderDeleted', deletedOrder);
+        return deletedOrder;
+      } catch (error) {
+        console.error('Error deleting order:', error);
+        throw new Error('Error deleting order');
+      }
     }
   }
 };
@@ -98,13 +112,19 @@ async function startApolloServer() {
   apolloServer.applyMiddleware({ app });
 }
 
-startApolloServer();
+async function init() {
+  try {
+    // Synchronizácia modelov – vytvorí tabuľky ak neexistujú
+    await sequelize.sync();
+    console.log('Databáza SQL synchronizovaná');
+    await startApolloServer();
+    const PORT = process.env.PORT || 4000;
+    server.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error initializing database:', error);
+  }
+}
 
-// Socket.io logika (rooms, eventy)
-const orderSocket = require(path.join(__dirname, 'src', 'sockets', 'orderSocket'));
-orderSocket(io);
-
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+init();

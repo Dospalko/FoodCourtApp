@@ -7,14 +7,21 @@ const CustomerView = () => {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    const sock = io('http://localhost:4000');
+    // Získanie persistent tokenu z localStorage
+    let authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      authToken = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('authToken', authToken);
+    }
+    const sock = io('http://localhost:4000', {
+      query: { authToken }
+    });
     setSocket(sock);
     sock.on('connect', () => {
-      console.log('Customer socket connected:', sock.id);
+      console.log('Customer socket connected:', sock.id, 'with token:', authToken);
       // Pripojenie do miestnosti pre zákazníka
       sock.emit('joinRoom', 'customer');
     });
-    // Zákazník počúva notifikácie o aktualizáciách objednávok (napr. keď je objednávka označená ako ready)
     sock.on('orderUpdate', (data) => {
       console.log('Order update received for customer:', data);
       setNotifications(prev => [...prev, { type: 'update', data }]);

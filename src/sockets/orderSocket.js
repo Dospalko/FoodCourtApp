@@ -1,9 +1,13 @@
 // src/sockets/orderSocket.js
 module.exports = function(io) {
     io.on('connection', (socket) => {
-      console.log('Socket connected:', socket.id);
+      // Získame persistentný authToken z handshake query
+      const authToken = socket.handshake.query.authToken;
+      console.log(`Socket connected: ${socket.id} with authToken: ${authToken}`);
   
-      // Umožniť klientom pripojiť sa k miestnostiam (napr. "restaurant" alebo "customer")
+      // Uložme token na socket, ak by sme ho neskôr chceli využiť
+      socket.authToken = authToken;
+  
       socket.on('joinRoom', (room) => {
         socket.join(room);
         console.log(`Socket ${socket.id} joined room ${room}`);
@@ -11,7 +15,6 @@ module.exports = function(io) {
   
       socket.on('orderUpdate', (data) => {
         console.log('Order update received:', data);
-        // Ak nie je špecifikované inak, vysielame všetkým
         io.emit('orderStatus', data);
       });
   

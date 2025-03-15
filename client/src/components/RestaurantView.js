@@ -31,14 +31,21 @@ const RestaurantView = () => {
   const [updateOrder] = useMutation(UPDATE_ORDER);
 
   useEffect(() => {
-    const sock = io('http://localhost:4000');
+    // Získanie persistent tokenu z localStorage
+    let authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      authToken = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('authToken', authToken);
+    }
+    const sock = io('http://localhost:4000', {
+      query: { authToken }
+    });
     setSocket(sock);
     sock.on('connect', () => {
-      console.log('Restaurant socket connected:', sock.id);
+      console.log('Restaurant socket connected:', sock.id, 'with token:', authToken);
       // Pripojenie do miestnosti pre restauráciu
       sock.emit('joinRoom', 'restaurant');
     });
-    // Restaurácia môže počúvať napríklad nové objednávky (ak sú rozposlané do tejto miestnosti)
     sock.on('orderStatus', (data) => {
       console.log('New order received for restaurant:', data);
       setNotifications(prev => [...prev, { type: 'new', data }]);
@@ -53,7 +60,7 @@ const RestaurantView = () => {
         variables: {
           id,
           updates: { status: "ready" },
-          role: "restaurant" // aktualizácia zo strany restaurácie
+          role: "restaurant"
         }
       });
       refetch();

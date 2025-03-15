@@ -5,10 +5,9 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  // Voliteľne uložené perzistentné ID zákazníka, ak notifikácia patrí zákazníkovi
   customerId: {
-    type: String,
-    required: false
+    type: String
+    // Môže byť voliteľné – podľa potreby
   },
   message: {
     type: String,
@@ -23,5 +22,13 @@ const notificationSchema = new mongoose.Schema({
     required: true
   }
 }, { timestamps: true });
+
+// Pridanie virtuálneho poľa "id"
+notificationSchema.virtual('id').get(function () {
+  return this._id.toString();
+});
+
+// Zahrnutie virtuálnych polí do JSON výstupu
+notificationSchema.set('toJSON', { virtuals: true });
 
 module.exports = mongoose.model('Notification', notificationSchema);

@@ -1,3 +1,4 @@
+// Príklad pre Order (src/models/Order.js)
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
@@ -18,21 +19,24 @@ const orderSchema = new mongoose.Schema({
     default: 'pending',
     required: true
   },
-  // Pôvodný token zákazníka (môže sa meniť pri relácii)
   customerAuthToken: {
     type: String,
     required: true
   },
-  // Perzistentné ID zákazníka – napr. _id z kolekcie User
   customerId: {
     type: String,
     required: true
   },
-  // Token (alebo ID) reštaurácie – pre dynamický výber
   restaurantAuthToken: {
     type: String,
     required: true
   }
 }, { timestamps: true });
+
+orderSchema.virtual('id').get(function () {
+  return this._id.toString();
+});
+
+orderSchema.set('toJSON', { virtuals: true });
 
 module.exports = mongoose.model('Order', orderSchema);

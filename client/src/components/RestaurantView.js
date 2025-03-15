@@ -1,3 +1,4 @@
+// client/src/components/RestaurantView.js
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useQuery, gql, useMutation } from '@apollo/client';
@@ -31,7 +32,16 @@ const DELETE_ORDER = gql`
   }
 `;
 
+const DELETE_NOTIFICATION = gql`
+  mutation DeleteNotification($id: ID!) {
+    deleteNotification(id: $id) {
+      id
+    }
+  }
+`;
+
 const RestaurantView = () => {
+  // Používame userId (uložený pri login-e) ako token pre reštauráciu
   const restaurantAuthToken = localStorage.getItem('userId') || "restaurant";
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -40,6 +50,7 @@ const RestaurantView = () => {
   });
   const [updateOrder] = useMutation(UPDATE_ORDER);
   const [deleteOrder] = useMutation(DELETE_ORDER);
+  const [deleteNotification] = useMutation(DELETE_NOTIFICATION);
 
   const fetchNotifications = async () => {
     try {
@@ -107,13 +118,30 @@ const RestaurantView = () => {
     }
   };
 
+  const handleDeleteNotification = async (id) => {
+    try {
+      await deleteNotification({ variables: { id } });
+      setNotifications(notifications.filter(n => n.id !== id));
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
   return (
     <div className="p-4">
       <h2 className="text-3xl font-bold mb-6 text-gray-800">Restaurant Dashboard</h2>
       <h3 className="text-2xl font-semibold mb-4 text-gray-700">Persistent Notifications:</h3>
       <ul className="list-disc ml-8 mb-6 space-y-2">
         {notifications.map((notif, idx) => (
-          <li key={notif.id || idx} className="text-gray-600">{notif.message}</li>
+          <li key={notif.id || idx} className="flex justify-between items-center text-gray-600">
+            <span>{notif.message}</span>
+            <button
+              onClick={() => handleDeleteNotification(notif.id)}
+              className="ml-2 bg-red-500 hover:bg-red-700 text-white px-2 py-1 rounded text-sm"
+            >
+              Delete
+            </button>
+          </li>
         ))}
       </ul>
       <h3 className="text-2xl font-semibold mb-4 text-gray-700">Orders:</h3>

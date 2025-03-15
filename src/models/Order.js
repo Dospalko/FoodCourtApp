@@ -21,6 +21,11 @@ const orderSchema = new mongoose.Schema({
   customerAuthToken: {
     type: String,
     required: true
+  },
+  // Nové pole – identifikátor restaurácie pre túto objednávku
+  restaurantAuthToken: {
+    type: String,
+    required: true
   }
 }, { timestamps: true });
 

@@ -1,11 +1,10 @@
-// client/src/components/RestaurantView.js
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useQuery, gql, useMutation } from '@apollo/client';
 
-const GET_ORDERS = gql`
-  query GetOrders {
-    orders {
+const GET_ORDERS_BY_RESTAURANT = gql`
+  query GetOrdersByRestaurant($restaurantAuthToken: String!) {
+    ordersByRestaurant(restaurantAuthToken: $restaurantAuthToken) {
       id
       items
       totalAmount
@@ -35,13 +34,16 @@ const DELETE_ORDER = gql`
 const RestaurantView = () => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
-  const { loading, error, data, refetch } = useQuery(GET_ORDERS);
+  const restaurantAuthToken = localStorage.getItem('userId') || "restaurant";
+  const { loading, error, data, refetch } = useQuery(GET_ORDERS_BY_RESTAURANT, {
+    variables: { restaurantAuthToken }
+  });
   const [updateOrder] = useMutation(UPDATE_ORDER);
   const [deleteOrder] = useMutation(DELETE_ORDER);
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/notifications?authToken=restaurant`);
+      const response = await fetch(`http://localhost:4000/notifications?authToken=${restaurantAuthToken}`);
       const data = await response.json();
       if (data.notifications) {
         setNotifications(data.notifications);
@@ -53,12 +55,12 @@ const RestaurantView = () => {
 
   useEffect(() => {
     fetchNotifications();
-    const authToken = "restaurant";
+    const authToken = restaurantAuthToken; // použiť prihlásený používateľský ID pre reštauráciu
     const sock = io('http://localhost:4000', { query: { authToken } });
     setSocket(sock);
     sock.on('connect', () => {
       console.log('Restaurant socket connected:', sock.id, 'with token:', authToken);
-      sock.emit('joinRoom', 'restaurant');
+      sock.emit('joinRoom', authToken); // pripojenie do miestnosti podľa id
     });
     sock.on('orderStatus', (data) => {
       console.log('New order received for restaurant:', data);
@@ -77,7 +79,7 @@ const RestaurantView = () => {
       refetch();
     });
     return () => sock.disconnect();
-  }, [refetch]);
+  }, [refetch, restaurantAuthToken]);
 
   const markOrderReady = async (id) => {
     try {
@@ -121,7 +123,7 @@ const RestaurantView = () => {
         <p className="text-red-500">Error: {error.message}</p>
       ) : (
         <ul className="space-y-4">
-          {data.orders.map(order => (
+          {data && data.ordersByRestaurant && data.ordersByRestaurant.map(order => (
             <li key={order.id} className="border p-4 rounded shadow">
               <div className="mb-2">
                 <span className="font-bold">ID:</span> {order.id} — {order.items.join(', ')} — {order.totalAmount}€ — {order.status}

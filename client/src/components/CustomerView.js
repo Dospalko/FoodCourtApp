@@ -1,4 +1,3 @@
-// client/src/components/CustomerView.js
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import CreateOrderForm from './CreateOrderForm';

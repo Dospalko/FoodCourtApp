@@ -1,47 +1,41 @@
-// Importujeme potrebné moduly: Express, HTTP a Socket.io
+// server.js
+
+// Import základných modulov
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
 
-// Inicializujeme Express aplikáciu
+// Inicializácia Express aplikácie
 const app = express();
 
-// Vytvoríme HTTP server, ktorý bude využitý aj pre Socket.io
+// Vytvorenie HTTP servera
 const server = http.createServer(app);
 
-// Inicializácia Socket.io s nastavením CORS pre jednoduchý vývoj (povolený prístup z akejkoľvek domény)
+// Inicializácia Socket.io s povoleným CORS
 const io = socketIo(server, {
     cors: {
         origin: '*',
     }
 });
 
-// Middleware pre spracovanie JSON requestov
+// Middleware na spracovanie JSON dát
 app.use(express.json());
 
-// Testovacia routa, ktorá overí, že server beží
+// Testovacia routa
 app.get('/', (req, res) => {
     res.send('Food Court Order API beží!');
 });
 
-// Socket.io logika pre real-time komunikáciu
-io.on('connection', (socket) => {
-    console.log('Nový klient pripojený:', socket.id);
+// Importovanie a použitie routy pre objednávky
+const orderRoutes = require(path.join(__dirname, 'src', 'routes', 'orderRoutes'));
+app.use('/orders', orderRoutes);
 
-    // Príklad eventu: klient pošle aktualizáciu objednávky
-    socket.on('orderUpdate', (data) => {
-        console.log('Prijatá aktualizácia objednávky:', data);
-        // Emisia stavu objednávky všetkým pripojeným klientom
-        io.emit('orderStatus', data);
-    });
+// Import a inicializácia Socket.io logiky z orderSocket.js
+const orderSocket = require(path.join(__dirname, 'src', 'sockets', 'orderSocket'));
+orderSocket(io);
 
-    // Keď sa klient odpojí, vypíšeme jeho ID
-    socket.on('disconnect', () => {
-        console.log('Klient sa odpojil:', socket.id);
-    });
-});
-
-// Nastavenie portu pre server (defaultne 3000)
+// Spustenie servera na porte 3000 (alebo z env premennej PORT)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server beží na porte ${PORT}`);

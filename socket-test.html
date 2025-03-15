@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.io Test</title>
+    <!-- Načítame Socket.io klientskú knižnicu -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h1>Socket.io Test</h1>
+    <script>
+      // Pripojenie k serveru (uisti sa, že adresa sedí s tvojím serverom)
+      const socket = io('http://localhost:3000');
+
+      // Event, keď sa klient úspešne pripojí
+      socket.on('connect', () => {
+        console.log('Pripojený, socket id:', socket.id);
+      });
+
+      // Počúvanie eventu 'orderStatus'
+      socket.on('orderStatus', (data) => {
+        console.log('Prijatá aktualizácia objednávky:', data);
+      });
+
+      // Odoslanie eventu 'orderUpdate' po 3 sekundách
+      setTimeout(() => {
+        const updateData = {
+          orderId: 1,
+          status: 'pripravené'
+        };
+        console.log('Odosielame orderUpdate:', updateData);
+        socket.emit('orderUpdate', updateData);
+      }, 3000);
+    </script>
+  </body>
+</html>

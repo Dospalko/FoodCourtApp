@@ -39,13 +39,21 @@ const RestaurantView = () => {
   const [updateOrder] = useMutation(UPDATE_ORDER);
   const [deleteOrder] = useMutation(DELETE_ORDER);
 
-  useEffect(() => {
-    // Získanie persistent tokenu z localStorage
-    let authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      authToken = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('authToken', authToken);
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch(`http://localhost:4000/notifications?authToken=restaurant`);
+      const data = await response.json();
+      if (data.notifications) {
+        setNotifications(data.notifications);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications for restaurant:', err);
     }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const authToken = "restaurant";
     const sock = io('http://localhost:4000', { query: { authToken } });
     setSocket(sock);
     sock.on('connect', () => {
@@ -54,12 +62,18 @@ const RestaurantView = () => {
     });
     sock.on('orderStatus', (data) => {
       console.log('New order received for restaurant:', data);
-      setNotifications(prev => [...prev, { type: 'new', data }]);
+      setNotifications(prev => [
+        ...prev,
+        { id: Date.now(), message: `New order received: ID ${data.id}`, type: 'new', orderId: data.id }
+      ]);
       refetch();
     });
     sock.on('orderDeleted', (data) => {
       console.log('Order deletion received for restaurant:', data);
-      setNotifications(prev => [...prev, { type: 'deleted', data }]);
+      setNotifications(prev => [
+        ...prev,
+        { id: Date.now(), message: `Order deleted: ID ${data.id}`, type: 'deleted', orderId: data.id }
+      ]);
       refetch();
     });
     return () => sock.disconnect();
@@ -75,6 +89,7 @@ const RestaurantView = () => {
         }
       });
       refetch();
+      fetchNotifications();
     } catch (err) {
       console.error(err);
     }
@@ -84,36 +99,38 @@ const RestaurantView = () => {
     try {
       await deleteOrder({ variables: { id } });
       refetch();
+      fetchNotifications();
     } catch (err) {
       console.error(err);
     }
   };
 
   return (
-    <div>
-      <h2>Restaurant Dashboard</h2>
-      <h3>Notifications:</h3>
-      <ul>
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">Restaurant Dashboard</h2>
+      <h3 className="text-xl font-semibold mb-2">Persistent Notifications:</h3>
+      <ul className="list-disc ml-6 mb-4">
         {notifications.map((notif, idx) => (
-          <li key={idx}>
-            {notif.type === 'new' && `New order received: ID ${notif.data.id}`}
-            {notif.type === 'deleted' && `Order deleted: ID ${notif.data.id}`}
-          </li>
+          <li key={notif.id || idx} className="mb-1">{notif.message}</li>
         ))}
       </ul>
-      <h3>Orders:</h3>
+      <h3 className="text-xl font-semibold mb-2">Orders:</h3>
       {loading ? <p>Loading orders...</p> : error ? <p>Error: {error.message}</p> : (
-        <ul>
+        <ul className="space-y-4">
           {data.orders.map(order => (
-            <li key={order.id} style={{ marginBottom: '1rem' }}>
+            <li key={order.id} className="border p-4 rounded shadow">
               <div>
-                <strong>ID:</strong> {order.id} — {order.items.join(', ')} — {order.totalAmount}€ — {order.status}
+                <span className="font-bold">ID:</span> {order.id} — {order.items.join(', ')} — {order.totalAmount}€ — {order.status}
               </div>
               {order.status !== 'ready' && (
-                <>
-                  <button onClick={() => markOrderReady(order.id)}>Mark as Ready</button>
-                  <button onClick={() => handleDeleteOrder(order.id)}>Delete Order</button>
-                </>
+                <div className="mt-2 space-x-2">
+                  <button onClick={() => markOrderReady(order.id)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded">
+                    Mark as Ready
+                  </button>
+                  <button onClick={() => handleDeleteOrder(order.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded">
+                    Delete Order
+                  </button>
+                </div>
               )}
             </li>
           ))}

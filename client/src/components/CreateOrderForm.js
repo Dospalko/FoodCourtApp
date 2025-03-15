@@ -26,20 +26,15 @@ const CREATE_ORDER = gql`
 `;
 
 const CreateOrderForm = () => {
-  // Stavy pre formulár
   const [itemsInput, setItemsInput] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
   const [pickupTime, setPickupTime] = useState('');
 
-  // Vytvorenie mutácie
   const [createOrder, { data, loading, error }] = useMutation(CREATE_ORDER);
-
-  // Získanie persistentného tokenu z localStorage
   const customerAuthToken = localStorage.getItem('authToken') || '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Rozdelíme položky z textového reťazca na pole – predpokladáme, že sú oddelené čiarkami
     const itemsArray = itemsInput.split(',').map(item => item.trim()).filter(item => item);
     try {
       await createOrder({
@@ -50,7 +45,6 @@ const CreateOrderForm = () => {
           customerAuthToken: customerAuthToken
         }
       });
-      // Voliteľne vyčistíme formulár po úspešnom odoslaní
       setItemsInput('');
       setTotalAmount('');
       setPickupTime('');
@@ -60,20 +54,21 @@ const CreateOrderForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
-      <h2>Create Order</h2>
-      <div>
-        <label>Items (comma separated): </label>
+    <form onSubmit={handleSubmit} className="border p-4 mb-4 rounded shadow">
+      <h2 className="text-xl font-bold mb-2">Create Order</h2>
+      <div className="mb-2">
+        <label className="block font-medium">Items (comma separated):</label>
         <input
           type="text"
           value={itemsInput}
           onChange={(e) => setItemsInput(e.target.value)}
           placeholder="Burger, Fries, Cola"
           required
+          className="border rounded w-full p-2"
         />
       </div>
-      <div>
-        <label>Total Amount: </label>
+      <div className="mb-2">
+        <label className="block font-medium">Total Amount:</label>
         <input
           type="number"
           step="0.01"
@@ -81,22 +76,24 @@ const CreateOrderForm = () => {
           onChange={(e) => setTotalAmount(e.target.value)}
           placeholder="e.g. 15.5"
           required
+          className="border rounded w-full p-2"
         />
       </div>
-      <div>
-        <label>Pickup Time: </label>
+      <div className="mb-2">
+        <label className="block font-medium">Pickup Time:</label>
         <input
           type="datetime-local"
           value={pickupTime}
           onChange={(e) => setPickupTime(e.target.value)}
           required
+          className="border rounded w-full p-2"
         />
       </div>
-      <button type="submit" disabled={loading}>
+      <button type="submit" disabled={loading} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
         {loading ? 'Creating...' : 'Create Order'}
       </button>
-      {error && <p style={{ color: 'red' }}>Error: {error.message}</p>}
-      {data && <p style={{ color: 'green' }}>Order created with ID: {data.createOrder.id}</p>}
+      {error && <p className="text-red-500 mt-2">Error: {error.message}</p>}
+      {data && <p className="text-green-500 mt-2">Order created with ID: {data.createOrder.id}</p>}
     </form>
   );
 };

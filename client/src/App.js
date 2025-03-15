@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 import RestaurantView from './components/RestaurantView';
 import CustomerView from './components/CustomerView';
-
+import './App.css';
 const client = new ApolloClient({
   uri: 'http://localhost:4000/graphql',
   cache: new InMemoryCache()

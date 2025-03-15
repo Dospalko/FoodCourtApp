@@ -1,26 +1,22 @@
-// src/models/Notification.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/dbConfig');
+const mongoose = require('mongoose');
 
-const Notification = sequelize.define('Notification', {
+const notificationSchema = new mongoose.Schema({
   authToken: {
-    type: DataTypes.STRING,
-    allowNull: false
+    type: String,
+    required: true
   },
   message: {
-    type: DataTypes.STRING,
-    allowNull: false
+    type: String,
+    required: true
   },
   type: {
-    type: DataTypes.STRING,
-    allowNull: false  // napr. 'update', 'deleted'
+    type: String,
+    required: true  // napr. 'new', 'update', 'deleted'
   },
   orderId: {
-    type: DataTypes.STRING,
-    allowNull: false
+    type: String,
+    required: true
   }
-}, {
-  timestamps: true
-});
+}, { timestamps: true });
 
-module.exports = Notification;
+module.exports = mongoose.model('Notification', notificationSchema);

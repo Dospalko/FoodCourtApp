@@ -107,27 +107,37 @@ const RestaurantView = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Restaurant Dashboard</h2>
-      <h3 className="text-xl font-semibold mb-2">Persistent Notifications:</h3>
-      <ul className="list-disc ml-6 mb-4">
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Restaurant Dashboard</h2>
+      <h3 className="text-2xl font-semibold mb-4 text-gray-700">Persistent Notifications:</h3>
+      <ul className="list-disc ml-8 mb-6 space-y-2">
         {notifications.map((notif, idx) => (
-          <li key={notif.id || idx} className="mb-1">{notif.message}</li>
+          <li key={notif.id || idx} className="text-gray-600">{notif.message}</li>
         ))}
       </ul>
-      <h3 className="text-xl font-semibold mb-2">Orders:</h3>
-      {loading ? <p>Loading orders...</p> : error ? <p>Error: {error.message}</p> : (
+      <h3 className="text-2xl font-semibold mb-4 text-gray-700">Orders:</h3>
+      {loading ? (
+        <p className="text-gray-500">Loading orders...</p>
+      ) : error ? (
+        <p className="text-red-500">Error: {error.message}</p>
+      ) : (
         <ul className="space-y-4">
           {data.orders.map(order => (
             <li key={order.id} className="border p-4 rounded shadow">
-              <div>
+              <div className="mb-2">
                 <span className="font-bold">ID:</span> {order.id} — {order.items.join(', ')} — {order.totalAmount}€ — {order.status}
               </div>
               {order.status !== 'ready' && (
-                <div className="mt-2 space-x-2">
-                  <button onClick={() => markOrderReady(order.id)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded">
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => markOrderReady(order.id)}
+                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded"
+                  >
                     Mark as Ready
                   </button>
-                  <button onClick={() => handleDeleteOrder(order.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded">
+                  <button 
+                    onClick={() => handleDeleteOrder(order.id)}
+                    className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded"
+                  >
                     Delete Order
                   </button>
                 </div>

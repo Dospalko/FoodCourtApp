@@ -1,31 +1,27 @@
-// src/models/Order.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/dbConfig');
+const mongoose = require('mongoose');
 
-const Order = sequelize.define('Order', {
+const orderSchema = new mongoose.Schema({
   items: {
-    type: DataTypes.JSON,  // Ukladáme pole ako JSON
-    allowNull: false
+    type: [String],
+    required: true
   },
   totalAmount: {
-    type: DataTypes.FLOAT,
-    allowNull: false
+    type: Number,
+    required: true
   },
   pickupTime: {
-    type: DataTypes.DATE,
-    allowNull: false
+    type: Date,
+    required: true
   },
   status: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: 'pending'
+    type: String,
+    default: 'pending',
+    required: true
   },
   customerAuthToken: {
-    type: DataTypes.STRING,
-    allowNull: false
+    type: String,
+    required: true
   }
-}, {
-  timestamps: true
-});
+}, { timestamps: true });
 
-module.exports = Order;
+module.exports = mongoose.model('Order', orderSchema);

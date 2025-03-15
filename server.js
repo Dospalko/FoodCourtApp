@@ -1,30 +1,31 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const { ApolloServer, gql } = require('apollo-server-express');
 
-// Načítanie SQL databázy cez Sequelize
-const sequelize = require('./src/config/dbConfig');
-// Načítanie modelu Order
+// Načítanie MongoDB cez Mongoose (dbConfig.js sa postará o pripojenie)
+require('./src/config/dbConfig');
+
+// Načítanie modelov
 const Order = require('./src/models/Order');
+const Notification = require('./src/models/Notification');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: '*' } });
 global.io = io;
-const cors = require('cors');
-app.use(cors());
-
 
 app.use(express.json());
+app.use(require('cors')()); // Povolenie CORS
+
+// Testovacia routa
 app.get('/', (req, res) => {
-  res.send('Food Court Order API is running with SQL database!');
+  res.send('Food Court Order API is running with MongoDB!');
 });
 
-// Pridáme routu pre notifikácie
-const notificationRoutes = require(path.join(__dirname, 'src', 'routes', 'notificationRoutes'));
+// REST routa pre notifikácie
+const notificationRoutes = require('./src/routes/notificationRoutes');
 app.use('/notifications', notificationRoutes);
 
 // GraphQL schéma
@@ -36,6 +37,14 @@ const typeDefs = gql`
     pickupTime: String!
     status: String!
     customerAuthToken: String!
+  }
+
+  type Notification {
+    id: ID!
+    authToken: String!
+    message: String!
+    type: String!
+    orderId: String!
   }
 
   input OrderUpdateInput {
@@ -60,7 +69,7 @@ const resolvers = {
   Query: {
     orders: async () => {
       try {
-        return await Order.findAll();
+        return await Order.find();
       } catch (error) {
         console.error('Error fetching orders:', error);
         return [];
@@ -71,7 +80,13 @@ const resolvers = {
     createOrder: async (_, { items, totalAmount, pickupTime, customerAuthToken }) => {
       try {
         const newOrder = await Order.create({ items, totalAmount, pickupTime, customerAuthToken });
-        // Ak objednávka prichádza od zákazníka, upozorníme restauráciu
+        // Vytvor notifikáciu pre restauráciu
+        await Notification.create({
+          authToken: "restaurant",
+          message: `New order received: ID ${newOrder._id}`,
+          type: 'new',
+          orderId: newOrder._id.toString()
+        });
         global.io.to('restaurant').emit('orderStatus', newOrder);
         return newOrder;
       } catch (error) {
@@ -81,19 +96,24 @@ const resolvers = {
     },
     updateOrder: async (_, { id, updates, role }) => {
       try {
-        await Order.update(updates, { where: { id } });
-        const updatedOrder = await Order.findByPk(id);
-        // Ak aktualizácia prichádza zo strany restaurácie, vytvoríme notifikáciu pre zákazníka
-        if (role === 'restaurant' && updatedOrder.customerAuthToken) {
-          const Notification = require('./src/models/Notification');
+        const updatedOrder = await Order.findByIdAndUpdate(id, updates, { new: true });
+        if (role === 'restaurant') {
+          // Notifikácia pre zákazníka
           await Notification.create({
             authToken: updatedOrder.customerAuthToken,
-            message: `Your order ID ${updatedOrder.id} is now ${updatedOrder.status}`,
+            message: `Your order ID ${updatedOrder._id} is now ${updatedOrder.status}`,
             type: 'update',
-            orderId: updatedOrder.id.toString()
+            orderId: updatedOrder._id.toString()
           });
           global.io.to('customer').emit('orderUpdate', updatedOrder);
         } else if (role === 'customer') {
+          // Notifikácia pre restauráciu
+          await Notification.create({
+            authToken: "restaurant",
+            message: `Order ID ${updatedOrder._id} updated by customer: now ${updatedOrder.status}`,
+            type: 'update',
+            orderId: updatedOrder._id.toString()
+          });
           global.io.to('restaurant').emit('orderUpdate', updatedOrder);
         } else {
           global.io.emit('orderUpdate', updatedOrder);
@@ -106,19 +126,22 @@ const resolvers = {
     },
     deleteOrder: async (_, { id }) => {
       try {
-        const deletedOrder = await Order.findByPk(id);
-        await Order.destroy({ where: { id } });
-        // Vytvoríme notifikáciu o vymazaní, ak je objednávka spojená so zákazníkom
-        if (deletedOrder && deletedOrder.customerAuthToken) {
-          const Notification = require('./src/models/Notification');
+        const deletedOrder = await Order.findByIdAndDelete(id);
+        if (deletedOrder) {
           await Notification.create({
             authToken: deletedOrder.customerAuthToken,
-            message: `Your order ID ${deletedOrder.id} has been deleted`,
+            message: `Your order ID ${deletedOrder._id} has been deleted`,
             type: 'deleted',
-            orderId: deletedOrder.id.toString()
+            orderId: deletedOrder._id.toString()
           });
+          await Notification.create({
+            authToken: "restaurant",
+            message: `Order ID ${deletedOrder._id} has been deleted by customer`,
+            type: 'deleted',
+            orderId: deletedOrder._id.toString()
+          });
+          global.io.emit('orderDeleted', deletedOrder);
         }
-        global.io.emit('orderDeleted', deletedOrder);
         return deletedOrder;
       } catch (error) {
         console.error('Error deleting order:', error);
@@ -134,20 +157,9 @@ async function startApolloServer() {
   apolloServer.applyMiddleware({ app });
 }
 
-async function init() {
-    try {
-      // Pre vývoj: force sync vymaže a vytvorí tabuľky odznova
-      await sequelize.sync({ force: true });
-      console.log('Databáza SQL synchronizovaná (force sync)');
-      await startApolloServer();
-      const PORT = process.env.PORT || 4000;
-      server.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-      });
-    } catch (error) {
-      console.error('Error initializing database:', error);
-    }
-  }
-  
-  init();
-  
+startApolloServer();
+
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

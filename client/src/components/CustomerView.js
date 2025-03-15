@@ -52,12 +52,12 @@ const CustomerView = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Customer Dashboard</h2>
+      <h2 className="text-3xl font-bold mb-6 text-gray-800">Customer Dashboard</h2>
       <CreateOrderForm />
-      <h3 className="text-xl font-semibold mt-4">Persistent Notifications:</h3>
-      <ul className="list-disc ml-6">
+      <h3 className="text-2xl font-semibold mt-6 text-gray-700">Persistent Notifications:</h3>
+      <ul className="list-disc ml-8 mt-4 space-y-2">
         {notifications.map((notif, idx) => (
-          <li key={notif.id || idx} className="mb-1">{notif.message}</li>
+          <li key={notif.id || idx} className="text-gray-600">{notif.message}</li>
         ))}
       </ul>
     </div>

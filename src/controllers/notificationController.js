@@ -1,4 +1,3 @@
-// src/controllers/notificationController.js
 const Notification = require('../models/Notification');
 
 exports.getNotifications = async (req, res) => {
@@ -7,7 +6,7 @@ exports.getNotifications = async (req, res) => {
     return res.status(400).json({ message: 'authToken is required' });
   }
   try {
-    const notifications = await Notification.findAll({ where: { authToken } });
+    const notifications = await Notification.find({ authToken });
     res.json({ notifications });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching notifications', error });

@@ -32,9 +32,9 @@ const DELETE_ORDER = gql`
 `;
 
 const RestaurantView = () => {
+  const restaurantAuthToken = localStorage.getItem('userId') || "restaurant";
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
-  const restaurantAuthToken = localStorage.getItem('userId') || "restaurant";
   const { loading, error, data, refetch } = useQuery(GET_ORDERS_BY_RESTAURANT, {
     variables: { restaurantAuthToken }
   });
@@ -55,12 +55,12 @@ const RestaurantView = () => {
 
   useEffect(() => {
     fetchNotifications();
-    const authToken = restaurantAuthToken; // použiť prihlásený používateľský ID pre reštauráciu
+    const authToken = restaurantAuthToken;
     const sock = io('http://localhost:4000', { query: { authToken } });
     setSocket(sock);
     sock.on('connect', () => {
       console.log('Restaurant socket connected:', sock.id, 'with token:', authToken);
-      sock.emit('joinRoom', authToken); // pripojenie do miestnosti podľa id
+      sock.emit('joinRoom', authToken);
     });
     sock.on('orderStatus', (data) => {
       console.log('New order received for restaurant:', data);

@@ -7,6 +7,7 @@ const CREATE_ORDER = gql`
     $totalAmount: Float!,
     $pickupTime: String!,
     $customerAuthToken: String!,
+    $customerId: String!,
     $restaurantAuthToken: String!
   ) {
     createOrder(
@@ -14,6 +15,7 @@ const CREATE_ORDER = gql`
       totalAmount: $totalAmount,
       pickupTime: $pickupTime,
       customerAuthToken: $customerAuthToken,
+      customerId: $customerId,
       restaurantAuthToken: $restaurantAuthToken
     ) {
       id
@@ -22,6 +24,7 @@ const CREATE_ORDER = gql`
       pickupTime
       status
       customerAuthToken
+      customerId
       restaurantAuthToken
     }
   }
@@ -46,11 +49,10 @@ const CreateOrderForm = () => {
   const { data: restaurantData } = useQuery(GET_RESTAURANTS);
   const [createOrder, { data, loading, error }] = useMutation(CREATE_ORDER);
   const customerAuthToken = localStorage.getItem('authToken') || '';
+  const customerId = localStorage.getItem('userId') || '';
 
-  // Ak sú reštaurácie načítané, nastavíme predvolenú hodnotu
   React.useEffect(() => {
     if (restaurantData && restaurantData.restaurants.length > 0 && !selectedRestaurant) {
-      // Použijeme id reštaurácie ako restaurantAuthToken
       setSelectedRestaurant(restaurantData.restaurants[0].id);
     }
   }, [restaurantData, selectedRestaurant]);
@@ -65,6 +67,7 @@ const CreateOrderForm = () => {
           totalAmount: parseFloat(totalAmount),
           pickupTime: pickupTime,
           customerAuthToken: customerAuthToken,
+          customerId: customerId,
           restaurantAuthToken: selectedRestaurant
         }
       });
@@ -121,7 +124,7 @@ const CreateOrderForm = () => {
         >
           {restaurantData && restaurantData.restaurants.map((rest) => (
             <option key={rest.id} value={rest.id}>
-              {rest.email} {/* Alebo ak máte pole name, použite ho */}
+              {rest.email}
             </option>
           ))}
         </select>

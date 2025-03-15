@@ -16,7 +16,7 @@ const Order = require('./src/models/Order');
 const Notification = require('./src/models/Notification');
 const User = require('./src/models/User');
 
-const JWT_SECRET = 'your_jwt_secret_key';
+const JWT_SECRET = 'your_jwt_secret_key'; // Uložte tento kľúč bezpečne cez env
 
 const app = express();
 const server = http.createServer(app);
@@ -44,12 +44,14 @@ const typeDefs = gql`
     pickupTime: String!
     status: String!
     customerAuthToken: String!
+    customerId: String!
     restaurantAuthToken: String!
   }
 
   type Notification {
     id: ID!
     authToken: String!
+    customerId: String
     message: String!
     type: String!
     orderId: String!
@@ -92,12 +94,14 @@ const typeDefs = gql`
       totalAmount: Float!,
       pickupTime: String!,
       customerAuthToken: String!,
+      customerId: String!,
       restaurantAuthToken: String!
     ): Order
     updateOrder(id: ID!, updates: OrderUpdateInput!, role: String!): Order
     deleteOrder(id: ID!): Order
     registerUser(input: RegisterInput!): User
     loginUser(input: LoginInput!): User
+    deleteNotification(id: ID!): Notification
   }
 `;
 
@@ -129,12 +133,13 @@ const resolvers = {
     }
   },
   Mutation: {
-    createOrder: async (_, { items, totalAmount, pickupTime, customerAuthToken, restaurantAuthToken }) => {
+    createOrder: async (_, { items, totalAmount, pickupTime, customerAuthToken, customerId, restaurantAuthToken }) => {
       try {
-        const newOrder = await Order.create({ items, totalAmount, pickupTime, customerAuthToken, restaurantAuthToken });
-        // Vytvor notifikáciu pre vybranú restauráciu
+        const newOrder = await Order.create({ items, totalAmount, pickupTime, customerAuthToken, customerId, restaurantAuthToken });
+        // Vytvorenie notifikácie pre vybranú reštauráciu
         await Notification.create({
           authToken: restaurantAuthToken,
+          customerId: customerId,
           message: `New order received: ID ${newOrder._id}`,
           type: 'new',
           orderId: newOrder._id.toString()
@@ -150,21 +155,26 @@ const resolvers = {
       try {
         const updatedOrder = await Order.findByIdAndUpdate(id, updates, { new: true });
         if (role === 'restaurant') {
-          await Notification.create({
-            authToken: updatedOrder.customerAuthToken,
-            message: `Your order ID ${updatedOrder._id} is now ${updatedOrder.status}`,
-            type: 'update',
-            orderId: updatedOrder._id.toString()
-          });
-          global.io.to(updatedOrder.customerAuthToken).emit('orderUpdate', updatedOrder);
+          if (updatedOrder.customerAuthToken) {
+            await Notification.create({
+              authToken: updatedOrder.customerAuthToken,
+              customerId: updatedOrder.customerId,
+              message: `Your order ID ${updatedOrder._id} is now ${updatedOrder.status}`,
+              type: 'update',
+              orderId: updatedOrder._id.toString()
+            });
+            global.io.to(updatedOrder.customerAuthToken).emit('orderUpdate', updatedOrder);
+          }
         } else if (role === 'customer') {
-          await Notification.create({
-            authToken: updatedOrder.restaurantAuthToken,
-            message: `Order ID ${updatedOrder._id} updated by customer: now ${updatedOrder.status}`,
-            type: 'update',
-            orderId: updatedOrder._id.toString()
-          });
-          global.io.to(updatedOrder.restaurantAuthToken).emit('orderUpdate', updatedOrder);
+          if (updatedOrder.restaurantAuthToken) {
+            await Notification.create({
+              authToken: updatedOrder.restaurantAuthToken,
+              message: `Order ID ${updatedOrder._id} updated by customer: now ${updatedOrder.status}`,
+              type: 'update',
+              orderId: updatedOrder._id.toString()
+            });
+            global.io.to(updatedOrder.restaurantAuthToken).emit('orderUpdate', updatedOrder);
+          }
         } else {
           global.io.emit('orderUpdate', updatedOrder);
         }
@@ -178,19 +188,25 @@ const resolvers = {
       try {
         const deletedOrder = await Order.findByIdAndDelete(id);
         if (deletedOrder) {
-          await Notification.create({
-            authToken: deletedOrder.customerAuthToken,
-            message: `Your order ID ${deletedOrder._id} has been deleted`,
-            type: 'deleted',
-            orderId: deletedOrder._id.toString()
-          });
-          await Notification.create({
-            authToken: deletedOrder.restaurantAuthToken,
-            message: `Order ID ${deletedOrder._id} has been deleted by customer`,
-            type: 'deleted',
-            orderId: deletedOrder._id.toString()
-          });
-          global.io.emit('orderDeleted', deletedOrder);
+          if (deletedOrder.customerAuthToken) {
+            await Notification.create({
+              authToken: deletedOrder.customerAuthToken,
+              customerId: deletedOrder.customerId,
+              message: `Your order ID ${deletedOrder._id} has been deleted`,
+              type: 'deleted',
+              orderId: deletedOrder._id.toString()
+            });
+            global.io.to(deletedOrder.customerAuthToken).emit('orderDeleted', deletedOrder);
+          }
+          if (deletedOrder.restaurantAuthToken) {
+            await Notification.create({
+              authToken: deletedOrder.restaurantAuthToken,
+              message: `Order ID ${deletedOrder._id} has been deleted by customer`,
+              type: 'deleted',
+              orderId: deletedOrder._id.toString()
+            });
+            global.io.to(deletedOrder.restaurantAuthToken).emit('orderDeleted', deletedOrder);
+          }
         }
         return deletedOrder;
       } catch (error) {
@@ -230,6 +246,15 @@ const resolvers = {
       } catch (error) {
         console.error('Error logging in:', error);
         throw new Error('Error logging in');
+      }
+    },
+    deleteNotification: async (_, { id }) => {
+      try {
+        const notification = await Notification.findByIdAndDelete(id);
+        return notification;
+      } catch (error) {
+        console.error('Error deleting notification:', error);
+        throw new Error('Error deleting notification');
       }
     }
   }

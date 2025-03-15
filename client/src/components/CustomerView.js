@@ -6,9 +6,10 @@ const CustomerView = () => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
-  const fetchNotifications = async (authToken) => {
+  const fetchNotifications = async (customerId) => {
     try {
-      const response = await fetch(`http://localhost:4000/notifications?authToken=${authToken}`);
+      // Použijeme customerId ako filter
+      const response = await fetch(`http://localhost:4000/notifications?customerId=${customerId}`);
       const data = await response.json();
       if (data.notifications) {
         setNotifications(data.notifications);
@@ -19,18 +20,17 @@ const CustomerView = () => {
   };
 
   useEffect(() => {
-    let authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      authToken = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('authToken', authToken);
+    const authToken = localStorage.getItem('authToken');
+    const customerId = localStorage.getItem('userId') || '';
+    // Načítame notifikácie podľa perzistentného customerId
+    if (customerId) {
+      fetchNotifications(customerId);
     }
-    fetchNotifications(authToken);
-
     const sock = io('http://localhost:4000', { query: { authToken } });
     setSocket(sock);
     sock.on('connect', () => {
       console.log('Customer socket connected:', sock.id, 'with token:', authToken);
-      sock.emit('joinRoom', 'customer');
+      sock.emit('joinRoom', authToken);
     });
     sock.on('orderUpdate', (data) => {
       console.log('Order update received for customer:', data);

@@ -5,6 +5,11 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Voliteľne uložené perzistentné ID zákazníka, ak notifikácia patrí zákazníkovi
+  customerId: {
+    type: String,
+    required: false
+  },
   message: {
     type: String,
     required: true

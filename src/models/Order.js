@@ -18,11 +18,17 @@ const orderSchema = new mongoose.Schema({
     default: 'pending',
     required: true
   },
+  // Pôvodný token zákazníka (môže sa meniť pri relácii)
   customerAuthToken: {
     type: String,
     required: true
   },
-  // Nové pole – identifikátor restaurácie pre túto objednávku
+  // Perzistentné ID zákazníka – napr. _id z kolekcie User
+  customerId: {
+    type: String,
+    required: true
+  },
+  // Token (alebo ID) reštaurácie – pre dynamický výber
   restaurantAuthToken: {
     type: String,
     required: true

@@ -1,7 +1,7 @@
 // src/config/dbConfig.js
 const mongoose = require('mongoose');
 
-const mongoURI = 'mongodb://localhost/food-court-order';
+const mongoURI = 'mongodb://localhost/food-court-order'; // Lokálna MongoDB inštalácia
 
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,

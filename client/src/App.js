@@ -4,6 +4,7 @@ import RestaurantView from './components/RestaurantView';
 import CustomerView from './components/CustomerView';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
+import ViewNotifications from './components/ViewNotifications'; // Voliteľný komponent
 import './App.css';
 
 const client = new ApolloClient({
@@ -12,7 +13,7 @@ const client = new ApolloClient({
 });
 
 function App() {
-  const [view, setView] = useState('auth'); // auth, restaurant, customer
+  const [view, setView] = useState('auth'); // auth, restaurant, customer, publicNotifications
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
 
@@ -75,6 +76,14 @@ function App() {
                 </button>
               </>
             )}
+            {!isAuthenticated && (
+              <button 
+                onClick={() => setView('publicNotifications')} 
+                className="px-4 py-2 rounded bg-gray-500 text-white hover:bg-gray-700"
+              >
+                View Notifications
+              </button>
+            )}
           </div>
         </header>
         <main className="container mx-auto">
@@ -86,6 +95,7 @@ function App() {
           )}
           {view === 'restaurant' && <RestaurantView />}
           {view === 'customer' && <CustomerView />}
+          {view === 'publicNotifications' && <ViewNotifications />}
         </main>
       </div>
     </ApolloProvider>

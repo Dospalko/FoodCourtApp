@@ -1,44 +1,26 @@
 // src/controllers/orderController.js
+const orderRepository = require('../data/orderRepository');
 
-/**
- * orderController.js
- * Spracováva operácie s objednávkami.
- */
-
-// Pre jednoduché riešenie budeme používať in-memory pole
-let orders = [];
-let orderIdCounter = 1;
-
-/**
- * Funkcia pre získanie všetkých objednávok.
- */
+// Získanie všetkých objednávok (REST API)
 exports.getAllOrders = (req, res) => {
+  try {
+    const orders = orderRepository.getAllOrders();
     res.json({ orders });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching orders', error });
+  }
 };
 
-/**
- * Funkcia pre vytvorenie novej objednávky.
- * Očakáva v tele požiadavky polia: items, totalAmount, pickupTime.
- */
+// Vytvorenie novej objednávky (REST API)
 exports.createOrder = (req, res) => {
-    const { items, totalAmount, pickupTime } = req.body;
-
-    // Jednoduchá validácia
-    if (!items || !totalAmount || !pickupTime) {
-        return res.status(400).json({ message: 'Chýbajú povinné polia (items, totalAmount, pickupTime)' });
-    }
-
-    // Vytvorenie novej objednávky
-    const newOrder = {
-        id: orderIdCounter++,
-        items,
-        totalAmount,
-        pickupTime,
-        status: 'pending'
-    };
-
-    orders.push(newOrder);
-
-    // Tu môžeme neskôr spustiť notifikáciu cez Socket.io, ak sa objednávka zmení.
-    res.status(201).json({ message: 'Objednávka vytvorená', order: newOrder });
+  const { items, totalAmount, pickupTime } = req.body;
+  if (!items || !totalAmount || !pickupTime) {
+    return res.status(400).json({ message: 'Missing required fields (items, totalAmount, pickupTime)' });
+  }
+  try {
+    const newOrder = orderRepository.createOrder({ items, totalAmount, pickupTime });
+    res.status(201).json({ message: 'Order created', order: newOrder });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating order', error });
+  }
 };
